@@ -1,0 +1,6 @@
+id=kernel_optimizer
+name=Android Kernel Optimizer
+version=v1.0
+versionCode=1
+author=d224407
+description=Optimize kernel performance (VM, scheduler, I/O, CPU governor)
