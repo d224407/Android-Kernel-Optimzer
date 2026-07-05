@@ -11,12 +11,8 @@ set_perm $MODPATH/service.sh 0 0 0755
 set_perm $MODPATH/action.sh 0 0 0755
 
 # Cấp quyền thực thi (executable) cho các file nhị phân 32-bit và 64-bit
-if [ -f "$MODPATH/KernelEnhancer64" ]; then
-    set_perm $MODPATH/KernelEnhancer64 0 0 0755
-fi
-
-if [ -f "$MODPATH/KernelEnhancer32" ]; then
-    set_perm $MODPATH/KernelEnhancer32 0 0 0755
+if [ -f "$MODPATH/KernelEnhancer" ]; then
+    set_perm $MODPATH/KernelEnhancer 0 0 0755
 fi
 
 ui_print "✅ Android Kernel & Touch Optimizer (Binary Mode) installed!"
