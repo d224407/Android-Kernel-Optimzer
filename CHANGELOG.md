@@ -1,2 +1,5 @@
-### Changes (v4)
-Removed touch enhancement script (it's useless anyways)
+### Changes
+## v3
+added touch tweaks
+## v4
+Removed some useless touch enhancement script
