@@ -34,7 +34,7 @@ if [ ! -f "$MODDIR/module.prop" ]; then
 fi
 
 # Chuỗi Hash SHA256 gốc từ file C để check mã độc hoặc chỉnh sửa trái phép
-REQUIRED_SHA256="8308851d80c11311b33006ad3615d3cbfecb71e591572f045d3bc61df6e60025"
+REQUIRED_SHA256="75c56cff8003a5e179e68ad9632c293f8de3dc6d9385d01718c9539d88970a7f "
 CURRENT_SHA256=$(sha256sum "$MODDIR/module.prop" 2>/dev/null | awk '{print $1}')
 
 if [ -z "$CURRENT_SHA256" ]; then
