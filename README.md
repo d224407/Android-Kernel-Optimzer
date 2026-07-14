@@ -1,2 +1,2 @@
-Sum kind of useless optimizer module. Use at ur own risk!
+KernelEnhancer module but open-source! <br>
 Reverse-engineered from https://github.com/RAAJK20Pro/KernelEnhancer/

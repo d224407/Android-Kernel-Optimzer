@@ -4,4 +4,7 @@ added touch tweaks, added 32bit support
 ## v4
 Removed some useless touch enhancement script
 ## v5
-Fixed SHA256 verification cus im a dumbass
+Removed SHA256 verification
+## v6
+Module is now open-source
+Added workflow
