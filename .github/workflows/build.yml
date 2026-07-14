@@ -1,0 +1,89 @@
+name: Build KernelEnhancer Module
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install cross-compilers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-arm-linux-gnueabihf \
+            gcc-aarch64-linux-gnu \
+            zip
+
+      - name: Build ARMv7 (32-bit)
+        run: |
+          mkdir -p build/armv7
+          arm-linux-gnueabihf-gcc \
+            -static \
+            -O2 \
+            -Wall \
+            -o build/armv7/kernelenhancer \
+            src/KernelEnhancer.c
+          echo "ARMv7 build completed"
+
+      - name: Build ARMv8 (64-bit)
+        run: |
+          mkdir -p build/armv8
+          aarch64-linux-gnu-gcc \
+            -static \
+            -O2 \
+            -Wall \
+            -o build/armv8/kernelenhancer \
+            src/KernelEnhancer.c
+          echo "ARMv8 build completed"
+
+      - name: Prepare module
+        run: |
+          MODULE_DIR="KernelEnhancer"
+          mkdir -p "$MODULE_DIR/system/bin"
+
+          # Copy template files
+          cp -r template/* "$MODULE_DIR/"
+
+          # Copy binaries
+          cp build/armv7/kernelenhancer "$MODULE_DIR/system/bin/kernelenhancer_32"
+          cp build/armv8/kernelenhancer "$MODULE_DIR/system/bin/kernelenhancer_64"
+
+          # Set permissions
+          chmod 755 "$MODULE_DIR/system/bin/kernelenhancer_32"
+          chmod 755 "$MODULE_DIR/system/bin/kernelenhancer_64"
+          chmod 755 "$MODULE_DIR/service.sh"
+          chmod 755 "$MODULE_DIR/action.sh"
+          chmod 755 "$MODULE_DIR/customize.sh"
+
+          # Create zip
+          cd "$MODULE_DIR"
+          zip -r "../KernelEnhancer-module.zip" *
+          cd ..
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KernelEnhancer-module
+          path: KernelEnhancer-module.zip
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./KernelEnhancer-module.zip
+          asset_name: KernelEnhancer-module-${{ github.ref_name }}.zip
+          asset_content_type: application/zip
