@@ -7,5 +7,6 @@ Removed some useless touch enhancement script
 Removed SHA256 verification
 ## v6
 Module is now open-source <br>
-Added workflow
-Reduce binary size (~500kb --> ~16kb)
+Added workflow <br>
+Reduce binary size (~500kb --> ~16kb) <br>
+Fixed dead code

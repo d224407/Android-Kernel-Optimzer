@@ -1,16 +1,18 @@
-name: Build KernelEnhancer Module
+name: Build
 
 on:
-  # Chỉ chạy khi bấm nút "Run workflow" thủ công
+  push:
   workflow_dispatch:
-
-  # Hoặc khi tạo release (nếu bạn muốn)
   release:
     types: [ published ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      # Tập hợp các cờ ép xung tối ưu dung lượng (Ultra Size Optimization)
+      CFLAGS: "-Oz -flto -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables -Wl,--gc-sections -s"
 
     steps:
       - name: Checkout code
@@ -20,15 +22,15 @@ jobs:
         uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
-          ndk-version: r26d
+          ndk-version: r26d # NDK r26d ổn định và tối ưu tốt cho C/C++ thuần
 
       - name: Build ARMv7 (32-bit)
         run: |
           mkdir -p build/armv7
           NDK=${{ steps.setup-ndk.outputs.ndk-path }}
           CLANG="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang"
-          $CLANG -Oz -s -o build/armv7/kernelenhancer src/KernelEnhancer.c
-          "$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip" build/armv7/kernelenhancer
+          $CLANG $CFLAGS -o build/armv7/kernelenhancer src/KernelEnhancer.c
+          "$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip" --strip-all build/armv7/kernelenhancer
           echo "ARMv7 size: $(ls -lh build/armv7/kernelenhancer | awk '{print $5}')"
 
       - name: Build ARMv8 (64-bit)
@@ -36,25 +38,54 @@ jobs:
           mkdir -p build/armv8
           NDK=${{ steps.setup-ndk.outputs.ndk-path }}
           CLANG="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
-          $CLANG -Oz -s -o build/armv8/kernelenhancer src/KernelEnhancer.c
-          "$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip" build/armv8/kernelenhancer
+          $CLANG $CFLAGS -o build/armv8/kernelenhancer src/KernelEnhancer.c
+          "$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip" --strip-all build/armv8/kernelenhancer
           echo "ARMv8 size: $(ls -lh build/armv8/kernelenhancer | awk '{print $5}')"
+
+      - name: Build x86 (32-bit)
+        run: |
+          mkdir -p build/x86
+          NDK=${{ steps.setup-ndk.outputs.ndk-path }}
+          CLANG="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android21-clang"
+          $CLANG $CFLAGS -o build/x86/kernelenhancer src/KernelEnhancer.c
+          "$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip" --strip-all build/x86/kernelenhancer
+          echo "x86 size: $(ls -lh build/x86/kernelenhancer | awk '{print $5}')"
+
+      - name: Build x86_64 (64-bit)
+        run: |
+          mkdir -p build/x86_64
+          NDK=${{ steps.setup-ndk.outputs.ndk-path }}
+          CLANG="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android21-clang"
+          $CLANG $CFLAGS -o build/x86_64/kernelenhancer src/KernelEnhancer.c
+          "$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip" --strip-all build/x86_64/kernelenhancer
+          echo "x86_64 size: $(ls -lh build/x86_64/kernelenhancer | awk '{print $5}')"
 
       - name: Prepare Magisk module
         run: |
           MODULE_DIR="KernelEnhancer"
           mkdir -p "$MODULE_DIR/system/bin"
-          cp -r template/* "$MODULE_DIR/"
+          
+          # Copy template an toàn
+          cp -r template/* "$MODULE_DIR/" 2>/dev/null || true
+          
+          # Đưa tất cả các kiến trúc vào
           cp build/armv7/kernelenhancer "$MODULE_DIR/system/bin/kernelenhancer_32"
           cp build/armv8/kernelenhancer "$MODULE_DIR/system/bin/kernelenhancer_64"
-          chmod 755 "$MODULE_DIR/system/bin/"* "$MODULE_DIR/"*.sh
-          cd "$MODULE_DIR" && zip -r "../optimizer.zip" * && cd ..
+          cp build/x86/kernelenhancer "$MODULE_DIR/system/bin/kernelenhancer_x86"
+          cp build/x86_64/kernelenhancer "$MODULE_DIR/system/bin/kernelenhancer_x64"
+          
+          # Phân quyền an toàn
+          chmod 755 "$MODULE_DIR/system/bin/"*
+          find "$MODULE_DIR" -type f -name "*.sh" -exec chmod 755 {} +
+          
+          # Nén ở mức cao nhất (-r9)
+          cd "$MODULE_DIR" && zip -r9 "../KernelEnhancer.zip" . && cd ..
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: optimizer
-          path: optimizer.zip
+          name: KernelEnhancer
+          path: KernelEnhancer.zip
 
       - name: Upload to release
         if: github.event_name == 'release'
@@ -63,6 +94,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./optimizer.zip
-          asset_name: optimizer-${{ github.ref_name }}.zip
+          asset_path: ./KernelEnhancer.zip
+          asset_name: KernelEnhancer-${{ github.ref_name }}.zip
           asset_content_type: application/zip
