@@ -10,3 +10,5 @@ Module is now open-source <br>
 Added workflow <br>
 Reduce binary size (~500kb --> ~16kb) <br>
 Fixed dead code
+## v7
+Added x86_64 & x86 support

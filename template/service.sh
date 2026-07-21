@@ -11,12 +11,25 @@ case "$ARCH" in
     armeabi-v7a|armeabi)
         BIN="$MODDIR/system/bin/kernelenhancer_32"
         ;;
+    x86_64|x86_64-v2|x86_64-v3)
+        BIN="$MODDIR/system/bin/kernelenhancer_x86_64"
+        ;;
+    x86|i686|i586|i486|i386)
+        BIN="$MODDIR/system/bin/kernelenhancer_x86"
+        ;;
     *)
-        # Fallback: try both
+        # Fallback: try all
         if [ -f "$MODDIR/system/bin/kernelenhancer_64" ]; then
             BIN="$MODDIR/system/bin/kernelenhancer_64"
-        else
+        elif [ -f "$MODDIR/system/bin/kernelenhancer_x86_64" ]; then
+            BIN="$MODDIR/system/bin/kernelenhancer_x86_64"
+        elif [ -f "$MODDIR/system/bin/kernelenhancer_32" ]; then
             BIN="$MODDIR/system/bin/kernelenhancer_32"
+        elif [ -f "$MODDIR/system/bin/kernelenhancer_x86" ]; then
+            BIN="$MODDIR/system/bin/kernelenhancer_x86"
+        else
+            echo "KernelEnhancer: No binary found for architecture $ARCH" > /data/local/tmp/status.log
+            exit 1
         fi
         ;;
 esac
@@ -24,4 +37,4 @@ esac
 # Run in background
 nohup "$BIN" > /dev/null 2>&1 &
 
-echo "KernelEnhancer started at $(date)" > /data/local/tmp/status.log
+echo "KernelEnhancer started at $(date) on $ARCH" > /data/local/tmp/status.log
