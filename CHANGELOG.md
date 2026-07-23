@@ -1,3 +1,13 @@
+## v7.1 - 2026-07-23
+
+### Changes
+- fix release
+- Fix github releases
+- Improved memory safety
+- Bump version to 7.0
+- Added x86_64 & x86 support
+
+
 ### Changes
 ## v3
 added touch tweaks, added 32bit support
