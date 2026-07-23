@@ -1,4 +1,4 @@
-name: Build KernelEnhancer
+name: Build
 
 on:
   push:
@@ -30,46 +30,52 @@ jobs:
       - name: Bump version and generate changelog
         id: bump_version
         run: |
-          # Lấy version hiện tại, xóa 'v' nếu có và phân tích thành số
+          # Lấy version hiện tại
           VERSION_RAW=$(grep "^version=" template/module.prop | cut -d'=' -f2)
           VERSION=${VERSION_RAW#v}
           VERSION_CODE=$(grep "^versionCode=" template/module.prop | cut -d'=' -f2)
           
-          # Nếu version có dạng x.y, tăng phần y lên 1
+          # Tăng version
           if [[ "$VERSION" == *"."* ]]; then
             MAJOR=$(echo "$VERSION" | cut -d'.' -f1)
             MINOR=$(echo "$VERSION" | cut -d'.' -f2)
             NEW_MINOR=$((MINOR + 1))
             NEW_VERSION="${MAJOR}.${NEW_MINOR}"
           else
-            NEW_VERSION=$((VERSION + 1))
+            NEW_VERSION="${VERSION}.0"
           fi
-          
           NEW_VERSION_CODE=$((VERSION_CODE + 1))
           
           echo "Old version: v${VERSION} (code: ${VERSION_CODE})"
           echo "New version: v${NEW_VERSION} (code: ${NEW_VERSION_CODE})"
           
-          # Cập nhật module.prop
+          # Cập nhật module.prop và update.json
           sed -i "s/^version=v.*/version=v${NEW_VERSION}/" template/module.prop
           sed -i "s/^versionCode=.*/versionCode=${NEW_VERSION_CODE}/" template/module.prop
-          
-          # Cập nhật update.json
           sed -i "s/\"version\": \".*\"/\"version\": \"${NEW_VERSION}\"/" update.json
           sed -i "s/\"versionCode\": \".*\"/\"versionCode\": \"${NEW_VERSION_CODE}\"/" update.json
           
-          # Tạo changelog từ 5 commit gần nhất
-          CHANGELOG_ENTRY="## v${NEW_VERSION} - $(date +'%Y-%m-%d')\n\n"
-          CHANGELOG_ENTRY="${CHANGELOG_ENTRY}### Changes\n"
+          # --- CHANGELOG: CHỈ THÊM COMMIT MỚI NHẤT CHƯA CÓ ---
+          # Lấy commit message mới nhất
+          LATEST_COMMIT=$(git log -1 --pretty=format:"- %s")
           
-          # Lấy 5 commit gần nhất (trừ commit bump version nếu có)
-          COMMITS=$(git log --pretty=format:"- %s" -n 5)
-          CHANGELOG_ENTRY="${CHANGELOG_ENTRY}${COMMITS}\n\n"
+          # Tạo entry mới
+          NEW_ENTRY="## v${NEW_VERSION} - $(date +'%Y-%m-%d')\n\n### Changes\n${LATEST_COMMIT}\n\n"
           
-          # Ghi vào CHANGELOG.md
-          echo -e "${CHANGELOG_ENTRY}" > temp_changelog.md
-          cat CHANGELOG.md >> temp_changelog.md 2>/dev/null || true
-          mv temp_changelog.md CHANGELOG.md
+          # Kiểm tra nếu CHANGELOG.md chưa tồn tại
+          if [ ! -f "CHANGELOG.md" ]; then
+            echo "# Changelog\n\n" > CHANGELOG.md
+          fi
+          
+          # Kiểm tra xem commit mới nhất đã có trong CHANGELOG chưa
+          if grep -q "${LATEST_COMMIT}" CHANGELOG.md; then
+            echo "Commit already in changelog, skipping..."
+          else
+            # Thêm entry mới vào đầu file
+            echo -e "${NEW_ENTRY}" > temp_changelog.md
+            cat CHANGELOG.md >> temp_changelog.md
+            mv temp_changelog.md CHANGELOG.md
+          fi
           
           echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
           echo "new_version_code=${NEW_VERSION_CODE}" >> $GITHUB_OUTPUT
@@ -82,7 +88,7 @@ jobs:
           git commit -m "chore: bump version to v${{ steps.bump_version.outputs.new_version }} [skip ci]" || echo "No changes to commit"
           git push || echo "No changes to push"
 
-      # Các bước build (ARMv7, ARMv8, x86, x86_64) - giữ nguyên
+      # ---- BUILD (giữ nguyên) ----
       - name: Build ARMv7 (32-bit)
         run: |
           mkdir -p build/armv7
@@ -123,17 +129,13 @@ jobs:
         run: |
           MODULE_DIR="KernelEnhancer"
           mkdir -p "$MODULE_DIR/system/bin"
-          
           cp -r template/* "$MODULE_DIR/" 2>/dev/null || true
-          
           cp build/armv7/kernelenhancer "$MODULE_DIR/system/bin/kernelenhancer_32"
           cp build/armv8/kernelenhancer "$MODULE_DIR/system/bin/kernelenhancer_64"
           cp build/x86/kernelenhancer "$MODULE_DIR/system/bin/kernelenhancer_x86"
           cp build/x86_64/kernelenhancer "$MODULE_DIR/system/bin/kernelenhancer_x64"
-          
           chmod 755 "$MODULE_DIR/system/bin/"*
           find "$MODULE_DIR" -type f -name "*.sh" -exec chmod 755 {} +
-          
           cd "$MODULE_DIR" && zip -r9 "../KernelEnhancer.zip" . && cd ..
 
       - name: Create Release
@@ -144,7 +146,6 @@ jobs:
           name: v${{ steps.bump_version.outputs.new_version }}
           body: |
             ## KernelEnhancer v${{ steps.bump_version.outputs.new_version }}
-            
             📦 **Download**: KernelEnhancer.zip
             🔗 **Full Changelog**: https://github.com/d224407/KernelEnhancer-RE/blob/main/CHANGELOG.md
           draft: false
